@@ -1,4 +1,4 @@
-package myFEA;
+package trackFEA;
 
 import java.util.Arrays;
 
@@ -52,8 +52,32 @@ public class MatrixOper {
 		return b;
 	}
 
-	public String matrixPrint(double[][] a) {
-		String s = "matrix " + a + ":\n";
+	public static String matrixPrint(double[] a) {
+		String s = "matrix " + String.valueOf(a) + ":\n";
+		s+="a.length: "+a.length+"\n";
+		for (int i = 0; i < a.length; i++) {
+			String temp=String.format("%.4f", a[i]);
+			s = s + temp + " ";
+		}
+		return s;
+	}
+	
+	public static String matrixPrint(double[][] a) {
+		String s = "matrix " + String.valueOf(a) + ":\n";
+		s+="rows: "+a.length+"  columns: "+a[0].length+"\n";
+		for (int i = 0; i < a.length; i++) {
+			for (int j = 0; j < a[0].length; j++) {
+				String temp=String.format("%.4f", a[i][j]);
+				s = s + temp + " ";
+			}
+			s += "\n";
+		}
+		return s;
+	}
+	
+	public static String matrixPrint(int[][] a) {
+		String s = "matrix " + String.valueOf(a) + ":\n";
+		s+="rows: "+a.length+"  columns: "+a[0].length+"\n";
 		for (int i = 0; i < a.length; i++) {
 			for (int j = 0; j < a[0].length; j++) {
 				s = s + a[i][j] + " ";
