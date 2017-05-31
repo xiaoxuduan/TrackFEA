@@ -86,4 +86,23 @@ public class MatrixOper {
 		}
 		return s;
 	}
+	
+	public static double[] copyArray(double[] a){
+		double[] b=new double[a.length];
+		for(int i=0; i<b.length; i++){
+			b[i]=a[i];
+		}
+		return b;
+	}
+	
+	public static double[][] copyArray(double[][] a){
+		if(a.length==0) return new double[0][0];
+		double[][] b=new double[a.length][a[0].length];
+		for(int i=0; i<b.length; i++){
+			for(int j=0; j<b[0].length; j++){
+				b[i][j]=a[i][j];
+			}
+		}
+		return b;
+	}
 }

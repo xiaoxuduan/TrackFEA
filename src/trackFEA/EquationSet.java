@@ -12,8 +12,6 @@ import java.util.List;
 public class EquationSet {
 	// ax=b,
 	public static double[][] gaussEliminate(double[][] a, double[][] b){
-		System.out.println(MatrixOper.matrixPrint(a));
-		
 		// att: 1 column , not 0 column;
 		double[][] res=new double[a.length][1];
 		if(a.length==0) return res;
@@ -33,18 +31,18 @@ public class EquationSet {
 				// att: position;
 				double temp=a[j][i]/a[i][i];
 				for(int k=0; k<n; k++){  // for each element in row j
-					System.out.println("temp: "+temp);
+//					System.out.println("temp: "+temp);
 					a[j][k]-=temp*a[i][k];
 				}
 				// att: position;
 				b[j][0]-=temp*b[i][0];
 			}
 		}
-		System.out.println("a: ");
-		System.out.println(MatrixOper.matrixPrint(a));
-		System.out.println();
-		System.out.println("b:");
-		System.out.println(MatrixOper.matrixPrint(b));
+//		System.out.println("a: ");
+//		System.out.println(MatrixOper.matrixPrint(a));
+//		System.out.println();
+//		System.out.println("b:");
+//		System.out.println(MatrixOper.matrixPrint(b));
 		// calculate x from bottom;
 		res[n-1][0]=b[n-1][0]/a[n-1][n-1];
 		for(int i=n-2; i>=0; i--){

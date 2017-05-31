@@ -105,7 +105,7 @@ public class Element {
 		Ke[3][3]=(4*I*E)/ln+k*Math.pow(ln, 3)/105;
 		for(int i=1; i<4; i++){
 			for(int j=0; j<i; j++){
-				Ke[i][j]=Me[j][i];
+				Ke[i][j]=Ke[j][i];
 			}
 		}
 	}

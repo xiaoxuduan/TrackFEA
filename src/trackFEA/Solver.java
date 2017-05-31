@@ -90,6 +90,7 @@ public class Solver {
 		// boundary conditions;
 		solver.createRestrainedK();
 		solver.createRestrainedQ();
+		
 		if (solver.analysisType.equals("static"))
 			solver.staticSolve();
 		else if (solver.analysisType.equals("dynamics"))
@@ -104,12 +105,13 @@ public class Solver {
 			}
 		}
 		solver.outputData();
-
+		System.out.println();
 		System.out.println("Program is over.");
+		System.out.println();
 	}
 
 	private void inputData() {
-		System.out.println("input file name:");
+		System.out.println("Input file's name:");
 		Scanner in = new Scanner(System.in);
 		String fileName = in.next();
 
@@ -160,8 +162,8 @@ public class Solver {
 			// }
 			// }
 			// }
-
-			System.out.println("all data have been read;");
+			System.out.println();
+			System.out.println("All data have been read from input file;");
 		} catch (IOException e) {
 			System.out.println(e.toString());
 			System.out.println("Something is wrong with the IO of input file;");
@@ -364,7 +366,9 @@ public class Solver {
 					.getKe()[3][2];
 			K[elementsArray[i].getAssembleArray()[3]][elementsArray[i].getAssembleArray()[3]] += elementsArray[i]
 					.getKe()[3][3];
+		
 		}
+
 	}
 
 	private void createQ() {
@@ -407,25 +411,27 @@ public class Solver {
 
 	// Put a big number;
 	private void createRestrainedK() {
-		restrainedK = K;
+		restrainedK = MatrixOper.copyArray(K);
 		for (int i = 0; i < restrainedDofNumber.size(); i++) {
-			System.out.println(restrainedDofNumber.get(i)-1);
-			restrainedK[restrainedDofNumber.get(i)-1][restrainedDofNumber.get(i)-1] *= Double.POSITIVE_INFINITY;
+//			System.out.println(restrainedDofNumber.get(i)-1);
+			restrainedK[restrainedDofNumber.get(i)-1][restrainedDofNumber.get(i)-1] *= Math.pow(10, 10);
 		}
 	}
 
 	// Put a big number;
 	private void createRestrainedQ() {
-		restrainedQ = Q;
+		restrainedQ = MatrixOper.copyArray(Q);
 		for (int i = 0; i < restrainedDofNumber.size(); i++) {
-			restrainedQ[restrainedDofNumber.get(i)-1][0] *= Double.POSITIVE_INFINITY;
+			restrainedQ[restrainedDofNumber.get(i)-1][0] *= Math.pow(10, 10);
 		}
 	}
 
 	private void staticSolve() {
-		displacement = EquationSet.gaussEliminate(K, Q);
+		displacement = EquationSet.gaussEliminate(restrainedK, restrainedQ);
 		setNodeDisplacement();
-		System.out.println("Static solve completed.");
+		System.out.println();
+		System.out.println("Static solve is completed;");
+		System.out.println();
 	}
 
 	private void setNodeDisplacement() {
@@ -440,7 +446,7 @@ public class Solver {
 	}
 
 	private void outputData() {
-		System.out.println("output file name:");
+		System.out.println("Output file's name:");
 		Scanner in = new Scanner(System.in);
 		String fileName = in.next();
 
@@ -454,7 +460,8 @@ public class Solver {
 			out.println("Nodes's vertical displacement:");
 			out.println("node number   vertical displacement");
 			for (int i = 0; i < nNodes; i++) {
-				out.println((i + 1) + "         " + nodesArray[i].getV());
+				String temp=String.format("%.4f", nodesArray[i].getV());
+				out.println((i + 1) + "         " + temp);
 			}
 			out.println();
 			out.println("Global M matrix:");
