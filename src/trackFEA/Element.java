@@ -88,7 +88,7 @@ public class Element {
 		Ce[3][3] = (c * Math.pow(ln, 3)) / 105;
 		for (int i = 1; i < 4; i++) {
 			for (int j = 0; j < i; j++) {
-				Ce[i][j] = Me[j][i];
+				Ce[i][j] = Ce[j][i];
 			}
 		}
 	}
