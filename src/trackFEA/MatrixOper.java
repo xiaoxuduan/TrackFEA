@@ -54,30 +54,30 @@ public class MatrixOper {
 
 	public static String matrixPrint(double[] a) {
 		String s = "matrix " + String.valueOf(a) + ":\n";
-		s+="a.length: "+a.length+"\n";
+		s += "a.length: " + a.length + "\n";
 		for (int i = 0; i < a.length; i++) {
-			String temp=String.format("%.4f", a[i]);
+			String temp = String.format("%.4f", a[i]);
 			s = s + temp + " ";
 		}
 		return s;
 	}
-	
+
 	public static String matrixPrint(double[][] a) {
 		String s = "matrix " + String.valueOf(a) + ":\n";
-		s+="rows: "+a.length+"  columns: "+a[0].length+"\n";
+		s += "rows: " + a.length + "  columns: " + a[0].length + "\n";
 		for (int i = 0; i < a.length; i++) {
 			for (int j = 0; j < a[0].length; j++) {
-				String temp=String.format("%.4f", a[i][j]);
+				String temp = String.format("%.4f", a[i][j]);
 				s = s + temp + " ";
 			}
 			s += "\n";
 		}
 		return s;
 	}
-	
+
 	public static String matrixPrint(int[][] a) {
 		String s = "matrix " + String.valueOf(a) + ":\n";
-		s+="rows: "+a.length+"  columns: "+a[0].length+"\n";
+		s += "rows: " + a.length + "  columns: " + a[0].length + "\n";
 		for (int i = 0; i < a.length; i++) {
 			for (int j = 0; j < a[0].length; j++) {
 				s = s + a[i][j] + " ";
@@ -86,21 +86,22 @@ public class MatrixOper {
 		}
 		return s;
 	}
-	
-	public static double[] copyArray(double[] a){
-		double[] b=new double[a.length];
-		for(int i=0; i<b.length; i++){
-			b[i]=a[i];
+
+	public static double[] copyArray(double[] a) {
+		double[] b = new double[a.length];
+		for (int i = 0; i < b.length; i++) {
+			b[i] = a[i];
 		}
 		return b;
 	}
-	
-	public static double[][] copyArray(double[][] a){
-		if(a.length==0) return new double[0][0];
-		double[][] b=new double[a.length][a[0].length];
-		for(int i=0; i<b.length; i++){
-			for(int j=0; j<b[0].length; j++){
-				b[i][j]=a[i][j];
+
+	public static double[][] copyArray(double[][] a) {
+		if (a.length == 0)
+			return new double[0][0];
+		double[][] b = new double[a.length][a[0].length];
+		for (int i = 0; i < b.length; i++) {
+			for (int j = 0; j < b[0].length; j++) {
+				b[i][j] = a[i][j];
 			}
 		}
 		return b;

@@ -90,7 +90,7 @@ public class Solver {
 		// boundary conditions;
 		solver.createRestrainedK();
 		solver.createRestrainedQ();
-		
+
 		if (solver.analysisType.equals("static"))
 			solver.staticSolve();
 		else if (solver.analysisType.equals("dynamics"))
@@ -366,7 +366,7 @@ public class Solver {
 					.getKe()[3][2];
 			K[elementsArray[i].getAssembleArray()[3]][elementsArray[i].getAssembleArray()[3]] += elementsArray[i]
 					.getKe()[3][3];
-		
+
 		}
 
 	}
@@ -389,13 +389,13 @@ public class Solver {
 			Node tempNode = nodesArray[restraints[0][i] - 1];
 			switch (restraints[1][i]) {
 			case 10:
-				restrainedDofNumber.add(tempNode.getNumber() * 2-1);
+				restrainedDofNumber.add(tempNode.getNumber() * 2 - 1);
 				break;
 			case 01:
 				restrainedDofNumber.add(tempNode.getNumber() * 2);
 				break;
 			case 11:
-				restrainedDofNumber.add(tempNode.getNumber() * 2-1);
+				restrainedDofNumber.add(tempNode.getNumber() * 2 - 1);
 				restrainedDofNumber.add(tempNode.getNumber() * 2);
 				break;
 			default:
@@ -413,8 +413,8 @@ public class Solver {
 	private void createRestrainedK() {
 		restrainedK = MatrixOper.copyArray(K);
 		for (int i = 0; i < restrainedDofNumber.size(); i++) {
-//			System.out.println(restrainedDofNumber.get(i)-1);
-			restrainedK[restrainedDofNumber.get(i)-1][restrainedDofNumber.get(i)-1] *= Math.pow(10, 10);
+			// System.out.println(restrainedDofNumber.get(i)-1);
+			restrainedK[restrainedDofNumber.get(i) - 1][restrainedDofNumber.get(i) - 1] *= Math.pow(10, 10);
 		}
 	}
 
@@ -422,7 +422,7 @@ public class Solver {
 	private void createRestrainedQ() {
 		restrainedQ = MatrixOper.copyArray(Q);
 		for (int i = 0; i < restrainedDofNumber.size(); i++) {
-			restrainedQ[restrainedDofNumber.get(i)-1][0] *= Math.pow(10, 10);
+			restrainedQ[restrainedDofNumber.get(i) - 1][0] *= Math.pow(10, 10);
 		}
 	}
 
@@ -460,8 +460,8 @@ public class Solver {
 			out.println("Nodes's vertical displacement:");
 			out.println("node number   vertical displacement");
 			for (int i = 0; i < nNodes; i++) {
-				String temp=String.format("%.4f", nodesArray[i].getV());
-				out.println((i + 1) + "         " + temp);
+				String temp = String.format("%.4f", nodesArray[i].getV());
+				out.println(nodesArray[i].getNumber() + "         " + temp);
 			}
 			out.println();
 			out.println("Global M matrix:");
