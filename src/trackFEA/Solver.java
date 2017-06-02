@@ -410,19 +410,23 @@ public class Solver {
 	}
 
 	// Put a big number;
+	// reference: 土木工程结构分析程序设计与原理-李德建-P17;
+	// set k(i,i)=bigNumber; set Q(i,0)=bigNumber*(known displacement);
 	private void createRestrainedK() {
 		restrainedK = MatrixOper.copyArray(K);
 		for (int i = 0; i < restrainedDofNumber.size(); i++) {
 			// System.out.println(restrainedDofNumber.get(i)-1);
-			restrainedK[restrainedDofNumber.get(i) - 1][restrainedDofNumber.get(i) - 1] *= Math.pow(10, 10);
+			restrainedK[restrainedDofNumber.get(i) - 1][restrainedDofNumber.get(i) - 1] = Math.pow(10, 20);
 		}
 	}
 
 	// Put a big number;
+	// reference: 土木工程结构分析程序设计与原理-李德建-P17;
+	// set k(i,i)=bigNumber; set Q(i,0)=bigNumber*(known displacement);
 	private void createRestrainedQ() {
 		restrainedQ = MatrixOper.copyArray(Q);
 		for (int i = 0; i < restrainedDofNumber.size(); i++) {
-			restrainedQ[restrainedDofNumber.get(i) - 1][0] *= Math.pow(10, 10);
+			restrainedQ[restrainedDofNumber.get(i) - 1][0] = Math.pow(10, 20)*0;
 		}
 	}
 
@@ -475,6 +479,7 @@ public class Solver {
 			out.println();
 			out.println("Global Q matrix:");
 			out.println(MatrixOper.matrixPrint(Q));
+			
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
