@@ -57,7 +57,7 @@ public class Solver {
 	// private double[][] externalForces = new double[2][nExternalForces];
 
 	/*
-	 * Above variables should be inputed from file;
+	 * Above variables above should be inputed from file;
 	 */
 
 	// element's global matrix
@@ -421,6 +421,7 @@ public class Solver {
 	}
 
 	// Put a big number;
+	// Now : deal with fixed restraints only. (displacement=0);
 	// reference: 土木工程结构分析程序设计与原理-李德建-P17;
 	// set k(i,i)=bigNumber; set Q(i,0)=bigNumber*(known displacement);
 	private void createRestrainedQ() {
