@@ -1,13 +1,12 @@
 package trackFEA;
-
 /**
  * 
- * @description Beam elements with supported springs and 2 node; Each node has 2 dof (v, theta); Information: Ke, Me, Ce,
+ * @description Beam element with 2 nodes; Each node has 2 dofs; The spring is not used;
  * @reference
  * @author duan xiaoxu
  *
  */
-public class TrackElement{
+public class BeamElement{
 
 	private int number; // Element number
 	private double E;
@@ -31,10 +30,11 @@ public class TrackElement{
 	private double[][] Ke = new double[4][4];
 	private double[][] Qe = new double[4][1];
 
-	public TrackElement(){
+	public BeamElement(){
 		
 	}
-	public TrackElement(int number, double E, double I, double m, double c, double k, Node i, Node j, double xx, double Pt) {
+	public BeamElement(int number, double E, double I, double m, double c, double k, Node i, Node j, double xx,
+			double Pt) {
 		this.number = number;
 		this.E = E;
 		this.I = I;
@@ -53,9 +53,9 @@ public class TrackElement{
 		createKe();
 		createQe();
 
-		// checkSymmetry(Me);
-		// checkSymmetry(Ce);
-		// checkSymmetry(Ke);
+		checkSymmetry(Me);
+		checkSymmetry(Ce);
+		checkSymmetry(Ke);
 
 		createAssembleArray();
 	}
@@ -97,22 +97,16 @@ public class TrackElement{
 	}
 
 	private void createKe() {
-		Ke[0][0] = -(72 * I * E) / Math.pow(ln, 3) + (48 * k * ln) / 35
-				- (-48 * I * E + 2 * k * Math.pow(ln, 4)) / Math.pow(ln, 3)
-				+ (36 * I * E + k * Math.pow(ln, 4)) / Math.pow(ln, 3);
-		Ke[0][1] = (24 * I * E) / (ln * ln) + (23 * k * ln * ln) / 105
-				+ (-84 * I * E + k * Math.pow(ln, 4)) / (2 * ln * ln)
-				- (-72 * I * E + 2 * k * Math.pow(ln, 4)) / (3 * ln * ln);
-		Ke[0][2] = (36 * I * E) / Math.pow(ln, 3) - (61 * k * ln) / 70
-				+ (-48 * I * E + k * Math.pow(ln, 4)) / Math.pow(ln, 3);
-		Ke[0][3] = -(18 * I * E) / (ln * ln) + (127 * k * ln * ln) / 420
-				- (-72 * I * E + k * Math.pow(ln, 4)) / (3 * ln * ln);
-		Ke[1][1] = -(8 * I * E) / ln - (34 * k * Math.pow(ln, 3)) / 105 + (36 * I * E + k * Math.pow(ln, 4)) / (3 * ln);
-		Ke[1][2] = -(6 * I * E) / (ln * ln) + 13 * k * ln * ln / 420;
-		Ke[1][3] = (2 * I * E) / ln - k * Math.pow(ln, 3) / 140;
-		Ke[2][2] = (12 * I * E) / Math.pow(ln, 3) + (13 * k * ln) / 35;
-		Ke[2][3] = -(6 * I * E) / (ln * ln) - 11 * k * ln * ln / 210;
-		Ke[3][3] = (4 * I * E) / ln + k * Math.pow(ln, 3) / 105;
+		Ke[0][0] = (12 * I * E) / Math.pow(ln, 3);
+		Ke[0][1] = (6 * I * E) / (ln * ln);
+		Ke[0][2] = (-12 * I * E) / Math.pow(ln, 3);
+		Ke[0][3] = (6 * I * E) / (ln * ln);
+		Ke[1][1] = (4 * I * E) / ln;
+		Ke[1][2] = -(6 * I * E) / (ln * ln);
+		Ke[1][3] = (2 * I * E) / ln;
+		Ke[2][2] = (12 * I * E) / Math.pow(ln, 3);
+		Ke[2][3] = -(6 * I * E) / (ln * ln);
+		Ke[3][3] = (4 * I * E) / ln;
 		for (int i = 1; i < 4; i++) {
 			for (int j = 0; j < i; j++) {
 				Ke[i][j] = Ke[j][i];
@@ -171,9 +165,9 @@ public class TrackElement{
 			for (int j = 0; j < matrix[0].length; j++) {
 				if ((Double.valueOf(matrix[i][j])).compareTo(Double.valueOf(matrix[j][i])) != 0)
 					try {
-						throw new Exception("matrix is not symmetric;");
+						throw new Exception("MaStrix is not symmetric;");
 					} catch (Exception e) {
-						System.out.println("matrix is not symmetric;");
+//						System.out.println("matrix is not symmetric;");
 						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}

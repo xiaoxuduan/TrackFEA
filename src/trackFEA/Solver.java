@@ -11,9 +11,9 @@ import java.util.*;
 
 /**
  * 
- * @description Solve track elements particularly; Don't need to transfer matrix
- *              since the local coordinate is the same as the global; No global
- *              external forces;
+ * @description Solve beam elements particularly; Don't need to transfer matrix
+ *              since the local coordinate system is the same as the global; No global
+ *              external forces; Preprocess displacement boundary conditions;
  * @reference
  * @author duan xiaoxu
  *
@@ -22,17 +22,21 @@ public class Solver {
 
 	private String analysisType; // static or dynamics;
 	private int nNodes; // total number of nodes;
-	private int nFreedoms; // single node's dof;
+	private int nNodeFreedoms; // single node's freedoms;
+	private int nFreedoms; // total number of nodes' dof;
 	private int nElements; // number of elements;
 	private int nRestraints; // number of restrained nodes;
+	private int nRestrainedDof; // number of restrained dof;
 	// private int nExternalForces; // number of external forces;
-
+	private String elementType; // element type, now available: trackElement, BeamElement;
+	private double A;
 	private double E;
 	private double I;
 	private double m;
 	private double c;
 	private double k;
 
+	// Arrays are initialed in initialArray();
 	private double[] x = new double[nNodes]; // x[0:nNodes-1] coordinate of
 												// nodes;
 	private double[] y = new double[nNodes]; // y[0:nNodes-1] coordinate of
@@ -50,6 +54,7 @@ public class Solver {
 	// restraints[0][j]: node number;
 	// restraints[1][j]: node restrained status
 	// (10: v was restrained, 01: v' was restraints, 11: all was restrained;);
+	// (110: u and v are restrained, theta is not restrained);
 	private int[][] restraints = new int[2][nRestraints];
 
 	// // ExternalForces[0][j]: node number where external forces loaded;
@@ -61,35 +66,26 @@ public class Solver {
 	 */
 
 	// element's global matrix
-	private double[][] M = new double[nFreedoms][nFreedoms];
-	private double[][] C = new double[nFreedoms][nFreedoms];
-	private double[][] K = new double[nFreedoms][nFreedoms];
-	private double[][] Q = new double[nFreedoms][1];
-	// restrained matrix;
-	private double[][] restrainedM = new double[nFreedoms][nFreedoms];
-	private double[][] restrainedC = new double[nFreedoms][nFreedoms];
-	private double[][] restrainedK = new double[nFreedoms][nFreedoms];
-	private double[][] restrainedQ = new double[nFreedoms][1];
+	private double[][] M;
+	private double[][] C;
+	private double[][] K;
+	private double[][] Q;
 
-	private double[][] displacement = new double[nFreedoms][1];
-	// restrained Dof's number; from 0;
-	private List<Integer> restrainedDofNumber = new ArrayList<>();
-	private Node[] nodesArray = new Node[nNodes];
-	private Element[] elementsArray = new Element[nElements];
+	private double[][] displacement;
+	private Node[] nodesArray;
+	private Object[] elementsArray;
 
 	public static void main(String[] args) {
 		Solver solver = new Solver();
 		solver.inputData();
 		solver.createNodes();
 		solver.createElements();
+		// Preprocess displacement boundary conditions; 
+		// Only add the local matrix's elements (whose related dof's displacement is not restrained) to global matrix; 
 		solver.createM();
 		solver.createC();
 		solver.createK();
 		solver.createQ();
-		solver.createRestrainedDofNumber();
-		// boundary conditions;
-		solver.createRestrainedK();
-		solver.createRestrainedQ();
 
 		if (solver.analysisType.equals("static"))
 			solver.staticSolve();
@@ -118,10 +114,15 @@ public class Solver {
 		try (Scanner inFile = new Scanner(Paths.get(fileName))) {
 			analysisType = inFile.next();
 			nNodes = inFile.nextInt();
+			nNodeFreedoms=inFile.nextInt();
 			nFreedoms = inFile.nextInt();
 			nElements = inFile.nextInt();
 			nRestraints = inFile.nextInt();
+			nRestrainedDof=inFile.nextInt();
 			// nExternalForces=inFile.nextInt();
+			elementType=inFile.next();
+			if(elementType.equals("BeamElement3"))
+				A=inFile.nextDouble();
 			E = inFile.nextDouble();
 			I = inFile.nextDouble();
 			m = inFile.nextDouble();
@@ -179,18 +180,30 @@ public class Solver {
 		elementsForce = new double[2][nElements];
 		restraints = new int[2][nRestraints];
 
-		M = new double[nFreedoms][nFreedoms];
-		C = new double[nFreedoms][nFreedoms];
-		K = new double[nFreedoms][nFreedoms];
-		Q = new double[nFreedoms][1];
-		restrainedM = new double[nFreedoms][nFreedoms];
-		restrainedC = new double[nFreedoms][nFreedoms];
-		restrainedK = new double[nFreedoms][nFreedoms];
-		restrainedQ = new double[nFreedoms][1];
+		M = new double[nFreedoms-nRestrainedDof][nFreedoms-nRestrainedDof];
+		C = new double[nFreedoms-nRestrainedDof][nFreedoms-nRestrainedDof];
+		K = new double[nFreedoms-nRestrainedDof][nFreedoms-nRestrainedDof];
+		Q = new double[nFreedoms-nRestrainedDof][1];
 
-		displacement = new double[nFreedoms][1];
+		displacement = new double[nFreedoms-nRestrainedDof][1];
 		nodesArray = new Node[nNodes];
-		elementsArray = new Element[nElements];
+		if(elementType.equals("TrackElement")){
+			elementsArray = new TrackElement[nElements];
+		}
+		else if(elementType.equals("BeamElement")){
+			elementsArray = new BeamElement[nElements];
+		}
+		else if(elementType.equals("BeamElement3")){
+			elementsArray = new BeamElement3[nElements];
+		}
+		else{
+			try {
+				throw new Exception("Element type is not exist.");
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
 
 	}
 
@@ -202,7 +215,11 @@ public class Solver {
 			out.println("nNodes: " + nNodes);
 			out.println("NElements: " + nElements);
 			out.println("nRestraints: " + nRestraints);
-			out.println("nRestraints: " + nRestraints);
+			out.println("nNodeFreedoms: "+nNodeFreedoms);
+			out.println("nFreedoms: " + nFreedoms);
+			out.println("nRestrainedDof: " + nRestrainedDof);
+			out.println("elementType: " + elementType);
+			out.println("A: "+A);
 			out.println("E: " + E);
 			out.println("I: " + I);
 			out.println("m: " + m);
@@ -230,17 +247,162 @@ public class Solver {
 		}
 	}
 
-	private void createNodes() {
-		for (int i = 0; i < nNodes; i++) {
-			nodesArray[i] = new Node(i + 1, x[i], y[i]);
+	private void createNodes(){
+		if(elementType.equals("TrackElement")||elementType.equals("BeamElement"))
+			createNodes1();
+		else if(elementType.equals("BeamElement3"))
+			createNodes2();
+	}
+	
+	// set restrained dof's dofNumber to 0, which is stored in Node class;
+	// other dofs numbered are created by adding 1 to totalDofNumber;
+	private void createNodes1() {
+		int totalDofNumber=0;
+		int dofNumber1=0;
+		int dofNumber2=0;
+		for (int i = 0; i < nNodes; i++) { // i=node number - 1;
+			// set default displacement to 0;
+			double v=0;
+			double theta=0;
+			// Mark if node i+1 is restrained.
+			boolean flag=false;
+			// set restrained dof's dofNumber to 0, which is stored in Node class;
+			for (int j = 0; j < restraints[0].length; j++) {  // for each column of restraints;
+				if(i+1==restraints[0][j]){
+					// Mark if node i+1 is restrained. If it's restrained, if will be processed in switch below. 
+					flag=true; 
+					switch (restraints[1][j]) {
+					case 10:
+						dofNumber1=0;
+						dofNumber2=totalDofNumber+1;
+						totalDofNumber++;
+						break;
+					case 01:
+						dofNumber1=totalDofNumber+1;
+						totalDofNumber++;
+						dofNumber2=0;
+						break;
+					case 11:
+						dofNumber1=0;
+						dofNumber2=0;
+						break;
+					default:
+						try {
+							throw new Exception("input restraints is wrong;");
+						} catch (Exception e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+					}
+				}
+			}
+			// if node i+1 is not restrained, deal with it here;
+			if(flag==false){
+				dofNumber1=totalDofNumber+1;
+				totalDofNumber++;
+				dofNumber2=totalDofNumber+1;
+				totalDofNumber++;
+			}
+			nodesArray[i] = new Node(i + 1, x[i], y[i], dofNumber1, dofNumber2, v, theta);
 		}
+	}
+	
+	// set restrained dof's dofNumber to 0, which is stored in Node class;
+	// other dofs numbered are created by adding 1 to totalDofNumber;
+	private void createNodes2() {
+		int totalDofNumber=0;
+		int dofNumber1=0;
+		int dofNumber2=0;
+		int dofNumber3=0;
+		for (int i = 0; i < nNodes; i++) { // i=node number - 1;
+			// set default displacement to 0;
+			double u=0;
+			double v=0;
+			double theta=0;
+			// Mark if node i+1 is restrained.
+			boolean flag=false;
+			// set restrained dof's dofNumber to 0, which is stored in Node2 class;
+			for (int j = 0; j < restraints[0].length; j++) {  // for each column of restraints;
+				if(i+1==restraints[0][j]){
+					// Mark if node i+1 is restrained. If it's restrained, if will be processed in switch below. 
+					flag=true; 
+					switch (restraints[1][j]) {
+					case 100:
+						dofNumber1=0;
+						dofNumber2=totalDofNumber+1;
+						totalDofNumber++;
+						dofNumber3=totalDofNumber+1;
+						totalDofNumber++;
+						break;
+					case 110:
+						dofNumber1=0;
+						dofNumber1=0;
+						dofNumber3=totalDofNumber+1;
+						totalDofNumber++;
+						break;
+					case 111:
+						dofNumber1=0;
+						dofNumber2=0;
+						dofNumber3=0;
+						break;
+					case 10:  // 010
+						dofNumber1=++totalDofNumber;
+						dofNumber2=0;
+						dofNumber3=++totalDofNumber;
+						break;
+					case 011:
+						dofNumber1=++totalDofNumber;
+						dofNumber2=0;
+						dofNumber3=0;
+						break;
+					case 001:
+						dofNumber1=++totalDofNumber;
+						dofNumber2=++totalDofNumber;
+						dofNumber3=0;
+						break;
+					case 101:
+						dofNumber1=0;
+						dofNumber2=++totalDofNumber;
+						dofNumber3=0;
+					default:
+						try {
+							throw new Exception("input restraints is wrong;");
+						} catch (Exception e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+					}
+				}
+			}
+			// if node i+1 is not restrained, deal with it here;
+			if(flag==false){
+				dofNumber1=totalDofNumber+1;
+				totalDofNumber++;
+				dofNumber2=totalDofNumber+1;
+				totalDofNumber++;
+				dofNumber3=++totalDofNumber;
+			}
+			nodesArray[i] = new Node(i + 1, x[i], y[i], dofNumber1, dofNumber2, dofNumber3, u, v, theta);
+		}
+		
+			// check dof number
+			for(int i=0; i<nodesArray.length; i++){
+				System.out.println(nodesArray[i].getDofNumber1());
+				System.out.println(nodesArray[i].getDofNumber2());
+				System.out.println(nodesArray[i].getDofNumber3());
+			}
+		
 	}
 
 	// Nodes number of element i are i and i+1;
 	private void createElements() {
 		for (int i = 0; i < nElements; i++) {
-			elementsArray[i] = new Element(i + 1, E, I, m, c, k, nodesArray[i], nodesArray[i + 1], elementsForce[0][i],
-					elementsForce[1][i]);
+			if(elementType.equals("TrackElement"))
+				elementsArray[i] = new TrackElement(i + 1, E, I, m, c, k, nodesArray[i], nodesArray[i + 1], elementsForce[0][i], elementsForce[1][i]);
+			else if(elementType.equals("BeamElement"))
+				elementsArray[i] = new BeamElement(i + 1, E, I, m, c, k, nodesArray[i], nodesArray[i + 1], elementsForce[0][i], elementsForce[1][i]);
+			else if(elementType.equals("BeamElement3"))
+				elementsArray[i] = new BeamElement3(i + 1, E, I, m, c, k, nodesArray[i], nodesArray[i + 1], elementsForce[0][i], elementsForce[1][i], A);
 		}
 	}
 
@@ -248,191 +410,132 @@ public class Solver {
 		if (M.length == 0)
 			return;
 		for (int i = 0; i < elementsArray.length; i++) {
-			M[elementsArray[i].getAssembleArray()[0]][elementsArray[i].getAssembleArray()[0]] += elementsArray[i]
-					.getMe()[0][0];
-			M[elementsArray[i].getAssembleArray()[0]][elementsArray[i].getAssembleArray()[1]] += elementsArray[i]
-					.getMe()[0][1];
-			M[elementsArray[i].getAssembleArray()[0]][elementsArray[i].getAssembleArray()[2]] += elementsArray[i]
-					.getMe()[0][2];
-			M[elementsArray[i].getAssembleArray()[0]][elementsArray[i].getAssembleArray()[3]] += elementsArray[i]
-					.getMe()[0][3];
-			M[elementsArray[i].getAssembleArray()[1]][elementsArray[i].getAssembleArray()[0]] += elementsArray[i]
-					.getMe()[1][0];
-			M[elementsArray[i].getAssembleArray()[1]][elementsArray[i].getAssembleArray()[1]] += elementsArray[i]
-					.getMe()[1][1];
-			M[elementsArray[i].getAssembleArray()[1]][elementsArray[i].getAssembleArray()[2]] += elementsArray[i]
-					.getMe()[1][2];
-			M[elementsArray[i].getAssembleArray()[1]][elementsArray[i].getAssembleArray()[3]] += elementsArray[i]
-					.getMe()[1][3];
-
-			M[elementsArray[i].getAssembleArray()[2]][elementsArray[i].getAssembleArray()[0]] += elementsArray[i]
-					.getMe()[2][0];
-			M[elementsArray[i].getAssembleArray()[2]][elementsArray[i].getAssembleArray()[1]] += elementsArray[i]
-					.getMe()[2][1];
-			M[elementsArray[i].getAssembleArray()[2]][elementsArray[i].getAssembleArray()[2]] += elementsArray[i]
-					.getMe()[2][2];
-			M[elementsArray[i].getAssembleArray()[2]][elementsArray[i].getAssembleArray()[3]] += elementsArray[i]
-					.getMe()[2][3];
-
-			M[elementsArray[i].getAssembleArray()[3]][elementsArray[i].getAssembleArray()[0]] += elementsArray[i]
-					.getMe()[3][0];
-			M[elementsArray[i].getAssembleArray()[3]][elementsArray[i].getAssembleArray()[1]] += elementsArray[i]
-					.getMe()[3][1];
-			M[elementsArray[i].getAssembleArray()[3]][elementsArray[i].getAssembleArray()[2]] += elementsArray[i]
-					.getMe()[3][2];
-			M[elementsArray[i].getAssembleArray()[3]][elementsArray[i].getAssembleArray()[3]] += elementsArray[i]
-					.getMe()[3][3];
+			for(int mm=0; mm<nNodeFreedoms*2; mm++){
+				for(int nn=0; nn<nNodeFreedoms*2; nn++){
+					if(elementType.equals("TrackElement")){
+						TrackElement tempElement=(TrackElement)elementsArray[i];
+						// The reason why it's -1 rather than 0, see Element.createAssembleArray();
+						if(tempElement.getAssembleArray()[mm]!=-1 && tempElement.getAssembleArray()[nn]!=-1){
+							M[tempElement.getAssembleArray()[mm]][tempElement.getAssembleArray()[nn]] += tempElement.getMe()[mm][nn];
+						}
+					}
+					else if(elementType.equals("BeamElement")){
+						BeamElement tempElement=(BeamElement)elementsArray[i];
+						// The reason why it's -1 rather than 0, see Element.createAssembleArray();
+						if(tempElement.getAssembleArray()[mm]!=-1 && tempElement.getAssembleArray()[nn]!=-1){
+							M[tempElement.getAssembleArray()[mm]][tempElement.getAssembleArray()[nn]] += tempElement.getMe()[mm][nn];
+						}
+					}
+					else if(elementType.equals("BeamElement3")){
+						BeamElement3 tempElement=(BeamElement3)elementsArray[i];
+						// The reason why it's -1 rather than 0, see Element.createAssembleArray();
+						if(tempElement.getAssembleArray()[mm]!=-1 && tempElement.getAssembleArray()[nn]!=-1){
+							M[tempElement.getAssembleArray()[mm]][tempElement.getAssembleArray()[nn]] += tempElement.getMe()[mm][nn];
+						}
+					}
+				}
+			}
 		}
 	}
-
+	
 	private void createC() {
 		if (C.length == 0)
 			return;
 		for (int i = 0; i < elementsArray.length; i++) {
-			C[elementsArray[i].getAssembleArray()[0]][elementsArray[i].getAssembleArray()[0]] += elementsArray[i]
-					.getCe()[0][0];
-			C[elementsArray[i].getAssembleArray()[0]][elementsArray[i].getAssembleArray()[1]] += elementsArray[i]
-					.getCe()[0][1];
-			C[elementsArray[i].getAssembleArray()[0]][elementsArray[i].getAssembleArray()[2]] += elementsArray[i]
-					.getCe()[0][2];
-			C[elementsArray[i].getAssembleArray()[0]][elementsArray[i].getAssembleArray()[3]] += elementsArray[i]
-					.getCe()[0][3];
-
-			C[elementsArray[i].getAssembleArray()[1]][elementsArray[i].getAssembleArray()[0]] += elementsArray[i]
-					.getCe()[1][0];
-			C[elementsArray[i].getAssembleArray()[1]][elementsArray[i].getAssembleArray()[1]] += elementsArray[i]
-					.getCe()[1][1];
-			C[elementsArray[i].getAssembleArray()[1]][elementsArray[i].getAssembleArray()[2]] += elementsArray[i]
-					.getCe()[1][2];
-			C[elementsArray[i].getAssembleArray()[1]][elementsArray[i].getAssembleArray()[3]] += elementsArray[i]
-					.getCe()[1][3];
-
-			C[elementsArray[i].getAssembleArray()[2]][elementsArray[i].getAssembleArray()[0]] += elementsArray[i]
-					.getCe()[2][0];
-			C[elementsArray[i].getAssembleArray()[2]][elementsArray[i].getAssembleArray()[1]] += elementsArray[i]
-					.getCe()[2][1];
-			C[elementsArray[i].getAssembleArray()[2]][elementsArray[i].getAssembleArray()[2]] += elementsArray[i]
-					.getCe()[2][2];
-			C[elementsArray[i].getAssembleArray()[2]][elementsArray[i].getAssembleArray()[3]] += elementsArray[i]
-					.getCe()[2][3];
-
-			C[elementsArray[i].getAssembleArray()[3]][elementsArray[i].getAssembleArray()[0]] += elementsArray[i]
-					.getCe()[3][0];
-			C[elementsArray[i].getAssembleArray()[3]][elementsArray[i].getAssembleArray()[1]] += elementsArray[i]
-					.getCe()[3][1];
-			C[elementsArray[i].getAssembleArray()[3]][elementsArray[i].getAssembleArray()[2]] += elementsArray[i]
-					.getCe()[3][2];
-			C[elementsArray[i].getAssembleArray()[3]][elementsArray[i].getAssembleArray()[3]] += elementsArray[i]
-					.getCe()[3][3];
+			for(int mm=0; mm<nNodeFreedoms*2; mm++){
+				for(int nn=0; nn<nNodeFreedoms*2; nn++){
+					if(elementType.equals("TrackElement")){
+						TrackElement tempElement=(TrackElement)elementsArray[i];
+						// The reason why it's -1 rather than 0, see Element.createAssembleArray();
+						if(tempElement.getAssembleArray()[mm]!=-1 && tempElement.getAssembleArray()[nn]!=-1){
+							C[tempElement.getAssembleArray()[mm]][tempElement.getAssembleArray()[nn]] += tempElement.getCe()[mm][nn];
+						}
+					}
+					else if(elementType.equals("BeamElement")){
+						BeamElement tempElement=(BeamElement)elementsArray[i];
+						// The reason why it's -1 rather than 0, see Element.createAssembleArray();
+						if(tempElement.getAssembleArray()[mm]!=-1 && tempElement.getAssembleArray()[nn]!=-1){
+							C[tempElement.getAssembleArray()[mm]][tempElement.getAssembleArray()[nn]] += tempElement.getCe()[mm][nn];
+						}
+					}
+					else if(elementType.equals("BeamElement3")){
+						BeamElement3 tempElement=(BeamElement3)elementsArray[i];
+						// The reason why it's -1 rather than 0, see Element.createAssembleArray();
+						if(tempElement.getAssembleArray()[mm]!=-1 && tempElement.getAssembleArray()[nn]!=-1){
+							C[tempElement.getAssembleArray()[mm]][tempElement.getAssembleArray()[nn]] += tempElement.getCe()[mm][nn];
+						}
+					}
+				}
+			}
 		}
 	}
-
+	
 	private void createK() {
 		if (K.length == 0)
 			return;
 		for (int i = 0; i < elementsArray.length; i++) {
-			K[elementsArray[i].getAssembleArray()[0]][elementsArray[i].getAssembleArray()[0]] += elementsArray[i]
-					.getKe()[0][0];
-			K[elementsArray[i].getAssembleArray()[0]][elementsArray[i].getAssembleArray()[1]] += elementsArray[i]
-					.getKe()[0][1];
-			K[elementsArray[i].getAssembleArray()[0]][elementsArray[i].getAssembleArray()[2]] += elementsArray[i]
-					.getKe()[0][2];
-			K[elementsArray[i].getAssembleArray()[0]][elementsArray[i].getAssembleArray()[3]] += elementsArray[i]
-					.getKe()[0][3];
-
-			K[elementsArray[i].getAssembleArray()[1]][elementsArray[i].getAssembleArray()[0]] += elementsArray[i]
-					.getKe()[1][0];
-			K[elementsArray[i].getAssembleArray()[1]][elementsArray[i].getAssembleArray()[1]] += elementsArray[i]
-					.getKe()[1][1];
-			K[elementsArray[i].getAssembleArray()[1]][elementsArray[i].getAssembleArray()[2]] += elementsArray[i]
-					.getKe()[1][2];
-			K[elementsArray[i].getAssembleArray()[1]][elementsArray[i].getAssembleArray()[3]] += elementsArray[i]
-					.getKe()[1][3];
-
-			K[elementsArray[i].getAssembleArray()[2]][elementsArray[i].getAssembleArray()[0]] += elementsArray[i]
-					.getKe()[2][0];
-			K[elementsArray[i].getAssembleArray()[2]][elementsArray[i].getAssembleArray()[1]] += elementsArray[i]
-					.getKe()[2][1];
-			K[elementsArray[i].getAssembleArray()[2]][elementsArray[i].getAssembleArray()[2]] += elementsArray[i]
-					.getKe()[2][2];
-			K[elementsArray[i].getAssembleArray()[2]][elementsArray[i].getAssembleArray()[3]] += elementsArray[i]
-					.getKe()[2][3];
-
-			K[elementsArray[i].getAssembleArray()[3]][elementsArray[i].getAssembleArray()[0]] += elementsArray[i]
-					.getKe()[3][0];
-			K[elementsArray[i].getAssembleArray()[3]][elementsArray[i].getAssembleArray()[1]] += elementsArray[i]
-					.getKe()[3][1];
-			K[elementsArray[i].getAssembleArray()[3]][elementsArray[i].getAssembleArray()[2]] += elementsArray[i]
-					.getKe()[3][2];
-			K[elementsArray[i].getAssembleArray()[3]][elementsArray[i].getAssembleArray()[3]] += elementsArray[i]
-					.getKe()[3][3];
-
+			for(int mm=0; mm<nNodeFreedoms*2; mm++){
+				for(int nn=0; nn<nNodeFreedoms*2; nn++){
+					if(elementType.equals("TrackElement")){
+						TrackElement tempElement=(TrackElement)elementsArray[i];
+						// The reason why it's -1 rather than 0, see Element.createAssembleArray();
+						if(tempElement.getAssembleArray()[mm]!=-1 && tempElement.getAssembleArray()[nn]!=-1){
+							K[tempElement.getAssembleArray()[mm]][tempElement.getAssembleArray()[nn]] += tempElement.getKe()[mm][nn];
+						}
+					}
+					else if(elementType.equals("BeamElement")){
+						BeamElement tempElement=(BeamElement)elementsArray[i];
+						// The reason why it's -1 rather than 0, see Element.createAssembleArray();
+						if(tempElement.getAssembleArray()[mm]!=-1 && tempElement.getAssembleArray()[nn]!=-1){
+							K[tempElement.getAssembleArray()[mm]][tempElement.getAssembleArray()[nn]] += tempElement.getKe()[mm][nn];
+						}
+					}
+					else if(elementType.equals("BeamElement3")){
+						BeamElement3 tempElement=(BeamElement3)elementsArray[i];
+						// The reason why it's -1 rather than 0, see Element.createAssembleArray();
+						if(tempElement.getAssembleArray()[mm]!=-1 && tempElement.getAssembleArray()[nn]!=-1){
+							K[tempElement.getAssembleArray()[mm]][tempElement.getAssembleArray()[nn]] += tempElement.getKe()[mm][nn];
+						}
+					}
+				}
+			}
 		}
-
 	}
-
+	
 	private void createQ() {
 		if (Q.length == 0)
 			return;
 		for (int i = 0; i < elementsArray.length; i++) {
-			Q[elementsArray[i].getAssembleArray()[0]][0] += elementsArray[i].getQe()[0][0];
-			Q[elementsArray[i].getAssembleArray()[1]][0] += elementsArray[i].getQe()[1][0];
-			Q[elementsArray[i].getAssembleArray()[2]][0] += elementsArray[i].getQe()[2][0];
-			Q[elementsArray[i].getAssembleArray()[3]][0] += elementsArray[i].getQe()[3][0];
-		}
-	}
-
-	private void createRestrainedDofNumber() {
-		if (restraints.length == 0)
-			return;
-		for (int i = 0; i < restraints[0].length; i++) {
-			Node tempNode = nodesArray[restraints[0][i] - 1];
-			switch (restraints[1][i]) {
-			case 10:
-				restrainedDofNumber.add(tempNode.getNumber() * 2 - 1);
-				break;
-			case 01:
-				restrainedDofNumber.add(tempNode.getNumber() * 2);
-				break;
-			case 11:
-				restrainedDofNumber.add(tempNode.getNumber() * 2 - 1);
-				restrainedDofNumber.add(tempNode.getNumber() * 2);
-				break;
-			default:
-				try {
-					throw new Exception("input restraints is wrong;");
-				} catch (Exception e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
+			for(int mm=0; mm<nNodeFreedoms*2; mm++){
+				if(elementType.equals("TrackElement")){
+					TrackElement tempElement=(TrackElement)elementsArray[i];
+					// The reason why it's -1 rather than 0, see Element.createAssembleArray();
+					if(tempElement.getAssembleArray()[mm]!=-1){
+						Q[tempElement.getAssembleArray()[mm]][0] += tempElement.getQe()[mm][0];
+					}
+				}
+				else if(elementType.equals("BeamElement")){
+					BeamElement tempElement=(BeamElement)elementsArray[i];
+					// The reason why it's -1 rather than 0, see Element.createAssembleArray();
+					if(tempElement.getAssembleArray()[mm]!=-1){
+						Q[tempElement.getAssembleArray()[mm]][0] += tempElement.getQe()[mm][0];
+					}
+				}
+				else if(elementType.equals("BeamElement3")){
+					BeamElement3 tempElement=(BeamElement3)elementsArray[i];
+					// The reason why it's -1 rather than 0, see Element.createAssembleArray();
+					if(tempElement.getAssembleArray()[mm]!=-1){
+						Q[tempElement.getAssembleArray()[mm]][0] += tempElement.getQe()[mm][0];
+					}
 				}
 			}
 		}
 	}
 
-	// Put a big number;
-	// reference: 土木工程结构分析程序设计与原理-李德建-P17;
-	// set k(i,i)=bigNumber; set Q(i,0)=bigNumber*(known displacement);
-	private void createRestrainedK() {
-		restrainedK = MatrixOper.copyArray(K);
-		for (int i = 0; i < restrainedDofNumber.size(); i++) {
-			// System.out.println(restrainedDofNumber.get(i)-1);
-			restrainedK[restrainedDofNumber.get(i) - 1][restrainedDofNumber.get(i) - 1] = Math.pow(10, 20);
-		}
-	}
-
-	// Put a big number;
-	// Now : deal with fixed restraints only. (displacement=0);
-	// reference: 土木工程结构分析程序设计与原理-李德建-P17;
-	// set k(i,i)=bigNumber; set Q(i,0)=bigNumber*(known displacement);
-	private void createRestrainedQ() {
-		restrainedQ = MatrixOper.copyArray(Q);
-		for (int i = 0; i < restrainedDofNumber.size(); i++) {
-			restrainedQ[restrainedDofNumber.get(i) - 1][0] = Math.pow(10, 20)*0;
-		}
-	}
-
 	private void staticSolve() {
-		displacement = EquationSet.gaussEliminate(restrainedK, restrainedQ);
+		double[][] tempK=MatrixOper.copyArray(K);
+		double[][] tempQ=MatrixOper.copyArray(Q);
+		displacement = EquationSet.gaussEliminate(tempK, tempQ);
 		setNodeDisplacement();
 		System.out.println();
 		System.out.println("Static solve is completed;");
@@ -440,10 +543,36 @@ public class Solver {
 	}
 
 	private void setNodeDisplacement() {
-		for (int i = 0; i < nodesArray.length; i++) {
-			nodesArray[i].setV(displacement[i * 2][0]);
-			nodesArray[i].setTheta(displacement[i * 2 + 1][0]);
+		int totalDofNumber=0;
+		if(elementType.equals("TrackElement")||elementType.equals("BeamElement")){
+			for (int i = 0; i < nodesArray.length; i++) {
+				if(nodesArray[i].getDofNumber1()!=0){
+					nodesArray[i].setV(displacement[totalDofNumber][0]);
+					totalDofNumber++;
+				}
+				if(nodesArray[i].getDofNumber2()!=0){
+					nodesArray[i].setTheta(displacement[totalDofNumber][0]);
+					totalDofNumber++;
+				}
+			}
 		}
+		else if(elementType.equals("BeamElement3")){
+			for (int i = 0; i < nodesArray.length; i++) {
+				if(nodesArray[i].getDofNumber1()!=0){
+					nodesArray[i].setU(displacement[totalDofNumber][0]);
+					totalDofNumber++;
+				}
+				if(nodesArray[i].getDofNumber2()!=0){
+					nodesArray[i].setV(displacement[totalDofNumber][0]);
+					totalDofNumber++;
+				}
+				if(nodesArray[i].getDofNumber3()!=0){
+					nodesArray[i].setTheta(displacement[totalDofNumber][0]);
+					totalDofNumber++;
+				}
+			}
+		}
+		
 	}
 
 	private void dynamicsSolve() {
@@ -456,29 +585,29 @@ public class Solver {
 		String fileName = in.next();
 
 		try (PrintWriter out = new PrintWriter(fileName)) {
-			out.println("Track FEA result file.\nPowered by Duan Xiaoxu.");
+			out.println("TrackFEA result file.\nPowered by Duan Xiaoxu.");
 			DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
 			Date date = new Date();
 			out.println(dateFormat.format(date));
 			out.println();
 
 			out.println("Nodes's vertical displacement:");
-			out.println("node number   vertical displacement");
+			out.println("Node number   Vertical displacement");
 			for (int i = 0; i < nNodes; i++) {
 				String temp = String.format("%.4f", nodesArray[i].getV());
-				out.println(nodesArray[i].getNumber() + "         " + temp);
+				out.println(nodesArray[i].getNumber() + "             " + temp);
 			}
 			out.println();
-			out.println("Global M matrix:");
+			out.println("Global restrained M matrix:");
 			out.println(MatrixOper.matrixPrint(M));
 			out.println();
-			out.println("Global C matrix:");
+			out.println("Global restrained C matrix:");
 			out.println(MatrixOper.matrixPrint(C));
 			out.println();
-			out.println("Global K matrix:");
+			out.println("Global restrained K matrix:");
 			out.println(MatrixOper.matrixPrint(K));
 			out.println();
-			out.println("Global Q matrix:");
+			out.println("Global restrained Q matrix:");
 			out.println(MatrixOper.matrixPrint(Q));
 			
 		} catch (IOException e) {

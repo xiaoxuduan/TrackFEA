@@ -1,43 +1,47 @@
 static
 
-nNodes: 5
-NElements: 4
+nNodes: 6
+NElements: 5
 nRestraints: 2
-nRestraints: 2
-E: 210133.6649
-I: 3.217E7
+nNodeFreedoms: 3
+nFreedoms: 18
+nRestrainedDof: 3
+elementType: BeamElement3
+A: 8100.0
+E: 200000.0
+I: 5467500.0
 m: 0.07
 c: 0.05
 k: 9.82
 
 x[]:
 matrix [D@55f96302:
-a.length: 5
-0.0000 1000.0000 2000.0000 3000.0000 4000.0000 
+a.length: 6
+0.0000 1000.0000 2000.0000 3000.0000 4000.0000 5000.0000 
 
 y[]:
 matrix [D@3d4eac69:
-a.length: 5
-0.0000 0.0000 0.0000 0.0000 0.0000 
+a.length: 6
+0.0000 0.0000 0.0000 0.0000 0.0000 0.0000 
 
 elementsNode[][]:
 matrix [[I@42a57993:
-rows: 2  columns: 4
-1 2 3 4 
-2 3 4 5 
+rows: 2  columns: 5
+1 2 3 4 5 
+2 3 4 5 6 
 
 
 elementsForce[][]:
 matrix [[D@75b84c92:
-rows: 2  columns: 4
-0.0000 0.0000 300.0000 0.0000 
-0.0000 0.0000 4000.0000 0.0000 
+rows: 2  columns: 5
+0.0000 800.0000 0.0000 0.0000 0.0000 
+0.0000 6000.0000 0.0000 0.0000 0.0000 
 
 
 restraints[][]:
 matrix [[I@6bc7c054:
 rows: 2  columns: 2
-1 5 
-11 11 
+1 6 
+110 10 
 
 
