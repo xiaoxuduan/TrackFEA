@@ -96,7 +96,7 @@ public class Solver {
 			try {
 				throw new Exception("analysis type is wrong;");
 			} catch (Exception e) {
-				// TODO Auto-generated catch block
+				// TODO Auto-generated catch blockC
 				e.printStackTrace();
 			}
 		}
@@ -364,6 +364,7 @@ public class Solver {
 						dofNumber1=0;
 						dofNumber2=++totalDofNumber;
 						dofNumber3=0;
+						break;
 					default:
 						try {
 							throw new Exception("input restraints is wrong;");
@@ -591,7 +592,7 @@ public class Solver {
 			out.println(dateFormat.format(date));
 			out.println();
 
-			out.println("Nodes's vertical displacement:");
+			out.println("Nodes' vertical displacement:");
 			out.println("Node number   Vertical displacement");
 			for (int i = 0; i < nNodes; i++) {
 				String temp = String.format("%.4f", nodesArray[i].getV());

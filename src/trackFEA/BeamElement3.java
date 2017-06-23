@@ -158,7 +158,7 @@ public class BeamElement3 {
 
 	private void createQe() {
 		Qe[0][0] = 0;
-		Qe[1][0] = (-3*c/(l*l)+2*d*d*d/Math.pow(l, 3)+1)*Pt;
+		Qe[1][0] = (-3*d*d/(l*l)+2*d*d*d/Math.pow(l, 3)+1)*Pt;
 		Qe[2][0] = Math.pow((-d/l+1),2)*Pt*d;
 		Qe[3][0] = 0;
 		Qe[4][0]=(-2*d*d*d/(l*l*l)+3*d*d/(l*l))*Pt;
